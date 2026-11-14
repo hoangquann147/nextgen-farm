@@ -1,4 +1,4 @@
-param([string]$PlayerPath = '')
+param([string]$PlayerPath = '', [string[]]$PlayerArguments = @(), [switch]$WaitForExit)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $saveDirectory = Join-Path $projectRoot 'DemoFarm/Save-v2'
@@ -20,7 +20,10 @@ if (-not (Test-Path -LiteralPath $savePath)) {
 }
 $env:NEXTGEN_FARM_SAVE_DIR = $saveDirectory
 if ($PlayerPath) {
-    Start-Process -FilePath $PlayerPath -WorkingDirectory (Split-Path $PlayerPath -Parent)
+    $options = @{FilePath=$PlayerPath; WorkingDirectory=(Split-Path $PlayerPath -Parent); PassThru=$true}
+    if ($PlayerArguments.Count -gt 0) { $options.ArgumentList = $PlayerArguments }
+    $process = Start-Process @options
+    if ($WaitForExit) { $process.WaitForExit(); exit $process.ExitCode }
 } else {
     & (Join-Path $PSScriptRoot 'StartFarm.ps1') -Mode Play
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

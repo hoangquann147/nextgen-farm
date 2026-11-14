@@ -10,17 +10,18 @@ namespace NextGenFarm
     public static class FarmInput
     {
         public static bool Suppressed { get; set; }
-        private static bool Active => Application.isFocused && !Suppressed;
+        private static bool Available => Application.isFocused && !Suppressed;
+        private static bool Active => Available && FarmGameFlow.GameplayAllowed;
         public static Vector2 Look
         {
             get
             {
-                if(!Active)return Vector2.zero;
+                if(!Active || (FarmGameFlow.Instance != null && !FarmGameFlow.Instance.CanLook))return Vector2.zero;
 #if ENABLE_INPUT_SYSTEM
-                if(Mouse.current!=null&&Mouse.current.rightButton.isPressed)return Mouse.current.delta.ReadValue();
+                if(Mouse.current!=null)return Mouse.current.delta.ReadValue();
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-                if(Input.GetMouseButton(1))return new Vector2(Input.GetAxis("Mouse X"),Input.GetAxis("Mouse Y"))*12;
+                if (Cursor.lockState == CursorLockMode.Locked) return new Vector2(Input.GetAxis("Mouse X"),Input.GetAxis("Mouse Y"))*12;
 #endif
                 return Vector2.zero;
             }
@@ -31,7 +32,7 @@ namespace NextGenFarm
         public static void ClearGUIState() { guiPresses.Clear(); guiHeld.Clear(); }
         public static void CaptureGUIEvent(Event evt)
         {
-            if(!Active)return;
+            if(!Available)return;
             if (evt == null || (evt.type != EventType.KeyDown && evt.type != EventType.KeyUp)) return;
             KeyCode code = evt.keyCode;
             bool characterOnly = code == KeyCode.None;
@@ -46,6 +47,7 @@ namespace NextGenFarm
             code == KeyCode.UpArrow || code == KeyCode.DownArrow || code == KeyCode.LeftArrow || code == KeyCode.RightArrow ||
             code == KeyCode.T || code == KeyCode.R || code == KeyCode.F || code == KeyCode.G || code == KeyCode.B ||
             code == KeyCode.V || code == KeyCode.P || code == KeyCode.Space || code == KeyCode.F12 ||
+            code == KeyCode.Escape || code == KeyCode.Tab || code == KeyCode.LeftAlt || code == KeyCode.RightAlt ||
             code == KeyCode.Equals || code == KeyCode.Minus || (code >= KeyCode.Alpha1 && code <= KeyCode.Alpha4);
         private static bool Consume(KeyCode code, bool hardware)
         {
@@ -55,6 +57,28 @@ namespace NextGenFarm
             if (handledFrames.TryGetValue(code, out int frame) && frame >= Time.frameCount - 1) return false;
             handledFrames[code] = Time.frameCount;
             return true;
+        }
+        public static bool MenuPress(KeyCode code)
+        {
+            if (!Available) return false;
+            bool pressed = false;
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                switch (code)
+                {
+                    case KeyCode.Escape: pressed = keyboard.escapeKey.wasPressedThisFrame; break;
+                    case KeyCode.Tab: pressed = keyboard.tabKey.wasPressedThisFrame; break;
+                    case KeyCode.LeftAlt: pressed = keyboard.leftAltKey.wasPressedThisFrame; break;
+                    case KeyCode.RightAlt: pressed = keyboard.rightAltKey.wasPressedThisFrame; break;
+                }
+            }
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+            pressed |= Input.GetKeyDown(code);
+#endif
+            return Consume(code, pressed);
         }
         public static Vector2 Move
         {

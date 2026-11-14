@@ -144,7 +144,7 @@ namespace NextGenFarm
                 Label(b.transform,keys[i],new Vector2(1,1),new Vector2(1,1),new Vector2(-6,-4),new Vector2(18,18),12,green,TextAnchor.MiddleCenter,true);
                 toolFaces.Add(b.GetComponent<Image>());
             }
-            Label(root,"WASD  Di chuyển     •     Cuộn chuột  Khoảng cách     •     Giữ chuột phải  Xoay góc nhìn",new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,5),new Vector2(850,20),14,Color.white,TextAnchor.MiddleCenter);
+            Label(root,"WASD  Di chuyển   •   Chuột  Xoay camera   •   Alt / Tab  Con trỏ   •   Esc  Menu",new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,5),new Vector2(950,20),14,Color.white,TextAnchor.MiddleCenter);
         }
         private void Tool(int index)
         {if(index<4){app.Driver.SelectedAction=(FarmAction)index;ShowToast(new[]{"Chọn đất trống rồi nhấn Space để cày","Chọn giống trong cửa hàng, nhấn Space để gieo","Tưới một lần mỗi vụ để giảm thời gian chờ","Cây chín luôn chờ bạn quay lại"}[index]);}else if(index==4)app.Driver.SetMounted(!app.Driver.Mounted);else if(index==5)app.Driver.ToggleAuto();else OpenShop(0);}
@@ -178,7 +178,8 @@ namespace NextGenFarm
             playerDot=Rect(r,"You",Vector2.zero,new Vector2(.5f,.5f),Vector2.zero,new Vector2(10,10));Image(playerDot,new Color(1,.9f,.5f));
         }
         public void ShowToast(string text){if(toast!=null){toast.text=text;toastUntil=Time.unscaledTime+4.5f;}}
-        public void SetVisible(bool visible) { if(canvas!=null)canvas.enabled=visible; }
+        public void SetVisible(bool visible) { if(root!=null)root.gameObject.SetActive(visible); }
+        public void SetPointerInteraction(bool enabled) { if(canvas!=null)canvas.GetComponent<GraphicRaycaster>().enabled=enabled; }
         private void OnAction(Vector2Int tile,FarmAction action,int count)
         {ShowToast(action==FarmAction.Harvest?"Thu hoạch thành công  ·  "+count+" ô":action==FarmAction.Water?"Đã tưới "+count+" ô  ·  Cây lớn nhanh hơn":action==FarmAction.Sow?"Đã gieo "+count+" ô "+CropName(app.Driver.SelectedCrop):"Đã cày "+count+" ô đất");}
         public static string CropName(string id)=>id=="corn"?"Ngô":id=="wheat"?"Lúa mì":id=="carrot"?"Cà rốt":id;
@@ -222,6 +223,7 @@ namespace NextGenFarm
         public void OpenShop(int page)
         {
             CloseShop();
+            FarmGameFlow.Instance?.CatalogOpened();
             modalBlocker=Rect(root,"Catalog backdrop",new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(4000,2400));
             Image(modalBlocker,new Color(.04f,.12f,.09f,.55f)).raycastTarget=true;
             modal=Panel(modalBlocker,"Catalog",new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(960,600),cream);
@@ -254,7 +256,8 @@ namespace NextGenFarm
                 Button(modal,"Thu sản phẩm",new Vector2(.5f,.5f),new Vector2(0,.5f),new Vector2(15,-60),new Vector2(250,55),()=>{int n=app.Animals.HarvestAll();ShowToast(n>0?"Đã thu sữa vào kho":"Sản phẩm chưa sẵn sàng");});
             }
         }
-        private void CloseShop(){if(modal!=null)Destroy(modal.gameObject);if(modalBlocker!=null)Destroy(modalBlocker.gameObject);modal=null;modalBlocker=null;}
+        public bool IsShopOpen => modalBlocker != null;
+        public void CloseShop(){bool wasOpen=IsShopOpen;if(modalBlocker!=null){modalBlocker.gameObject.SetActive(false);Destroy(modalBlocker.gameObject);}modal=null;modalBlocker=null;if(wasOpen)FarmGameFlow.Instance?.CatalogClosed();}
         private void OnDestroy(){if(app!=null&&app.Grid!=null)app.Grid.ActionApplied-=OnAction;if(mapTexture!=null)Destroy(mapTexture);if(font!=null)Destroy(font);if(bold!=null&&bold!=font)Destroy(bold);}
     }
 }

@@ -47,7 +47,7 @@ namespace NextGenFarm
         }
         private void Update()
         {
-            if (grid == null) return;
+            if (grid == null || !FarmGameFlow.GameplayAllowed) return;
             if (FarmInput.Press('1')) SelectedAction = FarmAction.Plow;
             if (FarmInput.Press('2')) SelectedAction = FarmAction.Sow;
             if (FarmInput.Press('3')) SelectedAction = FarmAction.Water;
@@ -58,7 +58,7 @@ namespace NextGenFarm
             if (input.sqrMagnitude > 0.01f)
             {
                 StopAuto();
-                // Camera faces north in demo, so WASD maps directly to farm coordinates.
+                // Project camera forward onto the ground; movement follows the free-look view.
                 Vector3 forward=Camera.main!=null?Camera.main.transform.forward:Vector3.forward;forward.y=0;forward.Normalize();
                 Vector3 move = forward*input.y + Vector3.Cross(Vector3.up,forward)*input.x;
                 Vector3 desired = transform.position + move * ((Mounted ? 7 : 4) * Time.deltaTime);

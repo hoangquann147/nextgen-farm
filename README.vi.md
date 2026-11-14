@@ -20,13 +20,16 @@ Kit tự chọn Input System mới nếu `ENABLE_INPUT_SYSTEM` được bật, n
 
 | Phím | Hành động |
 | --- | --- |
-| WASD / mũi tên | Di chuyển theo trục bản đồ |
+| WASD / mũi tên | Di chuyển theo hướng camera |
+| Chuột | Xoay camera 360° khi đang điều khiển, không cần giữ nút |
+| Alt / Tab | Hiện con trỏ UI / trở lại điều khiển |
+| Esc | Đóng cửa hàng, mở menu tạm nghỉ, quay lại từ cài đặt |
 | Cuộn chuột | Zoom liên tục từ theo sau người chơi đến góc nhìn cao |
 | T | Đổi đi bộ / lái máy cày |
 | 1, 2, 3, 4 | Chọn cày, gieo, tưới, thu hoạch |
 | Space | Dùng công cụ tại ô phía trước; đi bộ 1×1, máy cày 3×3 |
 | R | Chạy/dừng Auto-Tractor; WASD hủy tự động |
-| B | Đổi giống cây |
+| B | Mở cửa hàng chọn giống, kho và vật nuôi |
 | F / G | Cho ăn / thu sản phẩm tất cả chuồng demo |
 | V | Bán nông sản trong kho theo bảng giá |
 | P | Lưu ngay; đồng thời tự lưu mỗi 30 giây, khi pause và khi thoát bình thường |

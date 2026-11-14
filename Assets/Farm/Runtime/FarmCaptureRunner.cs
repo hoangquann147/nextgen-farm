@@ -12,7 +12,7 @@ namespace NextGenFarm
     {
         private IEnumerator Start()
         {
-            string[] args=Environment.GetCommandLineArgs();string path=null;float delay=5;bool quit=false,shop=false,verify=false;
+            string[] args=Environment.GetCommandLineArgs();string path=null;float delay=5;bool quit=false,shop=false,verify=false,menu=false,settings=false,flow=false;
             for(int i=0;i<args.Length;i++)
             {
                 if(args[i]=="-farmCapture"&&i+1<args.Length)path=args[++i];
@@ -20,19 +20,33 @@ namespace NextGenFarm
                 else if(args[i]=="-farmCaptureAndQuit")quit=true;
                 else if(args[i]=="-farmCaptureShop")shop=true;
                 else if(args[i]=="-farmVerifyPresentation")verify=true;
+                else if(args[i]=="-farmCaptureMenu")menu=true;
+                else if(args[i]=="-farmCaptureSettings")settings=true;
+                else if(args[i]=="-farmVerifyFlow")flow=true;
             }
             if(path==null)yield break;
             FarmInput.Suppressed=true;
+            var gameFlow=FindFirstObjectByType<FarmGameFlow>();
+            if(!menu&&!settings)gameFlow.Play();
             path=Path.GetFullPath(path);Directory.CreateDirectory(Path.GetDirectoryName(path));
             yield return new WaitForSecondsRealtime(Mathf.Max(2,delay));
+            if(flow)
+            {
+                bool valid=false;
+                try { FarmFlowChecks.Verify(gameFlow); valid=true; } catch(Exception ex){Debug.LogException(ex);}
+                if(!valid){Application.Quit(2);yield break;}
+            }
             if(verify)
             {
                 bool valid=false;
                 try { VerifyPresentation(); valid=true; }
                 catch(Exception ex){Debug.LogException(ex);}
                 if(!valid){Application.Quit(2);yield break;}
-                yield return null;
+                yield return new WaitForSecondsRealtime(.8f);
             }
+            if(menu)gameFlow.ShowMainMenu();
+            if(settings)gameFlow.OpenSettings();
+            if(menu||settings)yield return new WaitForSecondsRealtime(1);
             if(shop){FindFirstObjectByType<FarmHUD>().OpenShop(0);yield return new WaitForSecondsRealtime(1);}
             yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(path);
             float deadline=Time.realtimeSinceStartup+8;

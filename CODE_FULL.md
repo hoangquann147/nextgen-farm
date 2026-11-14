@@ -417,6 +417,7 @@ namespace NextGenFarm.Editor
         }
         private static void ExerciseGame()
         {
+            UnityEngine.Object.FindFirstObjectByType<FarmGameFlow>()?.Play();
             var grid = UnityEngine.Object.FindFirstObjectByType<FarmGridManager>();
             var animals = UnityEngine.Object.FindFirstObjectByType<AnimalPenSystem>();
             var driver = UnityEngine.Object.FindFirstObjectByType<TractorController>();
@@ -1251,6 +1252,75 @@ namespace NextGenFarm
 }
 ```
 
+## Assets/Farm/Runtime/FarmAudio.cs
+
+```csharp
+using System;
+using UnityEngine;
+
+namespace NextGenFarm
+{
+    // Two independent buses. Replace the generated clips with imported licensed audio as needed.
+    public sealed class FarmAudio : MonoBehaviour
+    {
+        public AudioSource MusicSource { get; private set; }
+        public AudioSource SfxSource { get; private set; }
+        private FarmSettings settings;
+        private FarmGridManager grid;
+        private AudioClip music, click, action;
+        public void Initialize(FarmSettings preferences, FarmGridManager farm)
+        {
+            settings = preferences; grid = farm;
+            MusicSource = gameObject.AddComponent<AudioSource>();
+            SfxSource = gameObject.AddComponent<AudioSource>();
+            MusicSource.playOnAwake = SfxSource.playOnAwake = false;
+            MusicSource.spatialBlend = SfxSource.spatialBlend = 0;
+            music = MakeMusic(); click = MakeTone("UI tick", 660, .09f); action = MakeTone("Farm action", 330, .2f);
+            MusicSource.clip = music; MusicSource.loop = true;
+            settings.Changed += Apply; grid.ActionApplied += OnAction; Apply(); MusicSource.Play();
+        }
+        private void Apply()
+        {
+            // Multiplication preserves independent music/SFX levels when master changes.
+            MusicSource.volume = settings.Data.master * settings.Data.music;
+            SfxSource.volume = settings.Data.master * settings.Data.sfx;
+        }
+        public void Click() { if (SfxSource != null) SfxSource.PlayOneShot(click, .35f); }
+        private void OnAction(Vector2Int cell, Core.FarmAction tool, int count) { SfxSource.PlayOneShot(action, .3f); }
+        private static AudioClip MakeTone(string name, float frequency, float duration)
+        {
+            const int rate = 22050; var samples = new float[(int)(rate * duration)];
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float t = i / (float)rate;
+                samples[i] = Mathf.Sin(2 * Mathf.PI * frequency * t) * Mathf.Exp(-t * 32) * Mathf.Min(t * 200, 1) * .3f;
+            }
+            var clip = AudioClip.Create(name, samples.Length, 1, rate, false); clip.SetData(samples, 0); return clip;
+        }
+        private static AudioClip MakeMusic()
+        {
+            const int rate = 22050, seconds = 24; var samples = new float[rate * seconds];
+            float[] notes = { 261.63f, 329.63f, 392, 523.25f, 440, 349.23f, 329.63f, 293.66f };
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float t = i / (float)rate, beat = t % 3;
+                int n = (int)(t / 3) % notes.Length;
+                float envelope = Mathf.Min(beat * 4, 1) * Mathf.Exp(-beat * 1.5f);
+                samples[i] = (Mathf.Sin(2 * Mathf.PI * notes[n] * t) + .25f * Mathf.Sin(4 * Mathf.PI * notes[n] * t)) * envelope * .08f;
+            }
+            var clip = AudioClip.Create("Valley arpeggio (procedural)", samples.Length, 1, rate, false); clip.SetData(samples, 0); return clip;
+        }
+        private void OnDestroy()
+        {
+            if (settings != null) settings.Changed -= Apply;
+            if (grid != null) grid.ActionApplied -= OnAction;
+            if (MusicSource != null) MusicSource.Stop(); if (SfxSource != null) SfxSource.Stop();
+            if (music != null) Destroy(music); if (click != null) Destroy(click); if (action != null) Destroy(action);
+        }
+    }
+}
+```
+
 ## Assets/Farm/Runtime/FarmBootstrap.cs
 
 ```csharp
@@ -1364,6 +1434,7 @@ namespace NextGenFarm
             environment.Initialize(clock, camera, root.transform, visuals != null ? visuals.precipitationMaterial : null);
             saves.Initialize(grid, animals);
             hud=gameObject.AddComponent<FarmHUD>();hud.Initialize(this);
+            gameObject.AddComponent<FarmGameFlow>().Initialize(this,hud,follow);
             gameObject.AddComponent<FarmActionFeedback>().Initialize(grid);
             gameObject.AddComponent<FarmCaptureRunner>();
         }
@@ -1490,16 +1561,21 @@ namespace NextGenFarm
     {
         public Transform target;
         public bool FreezeFollow { get; set; }
+        public bool MenuOrbit { get; set; }
         private float zoom = 0.08f;
         private float yaw, pitchOffset;
         public void AdjustZoom(float amount) { zoom = Mathf.Clamp01(zoom + amount); }
         private void LateUpdate()
         {
             if (target == null || FreezeFollow) return;
-            zoom = Mathf.Clamp01(zoom - FarmInput.Scroll * 0.08f);
-            Vector2 look=FarmInput.Look; yaw+=look.x*.12f; pitchOffset=Mathf.Clamp(pitchOffset-look.y*.08f,-8,12);
-            float pitch = Mathf.Lerp(11, 66, zoom)+pitchOffset;
-            float distance = Mathf.Lerp(5.5f, 32, zoom);
+            if (MenuOrbit) yaw = Mathf.Repeat(yaw + Time.unscaledDeltaTime * 2.5f, 360);
+            else
+            {
+                zoom = Mathf.Clamp01(zoom - FarmInput.Scroll * 0.08f);
+                Vector2 look=FarmInput.Look; yaw=Mathf.Repeat(yaw+look.x*.12f,360); pitchOffset=Mathf.Clamp(pitchOffset-look.y*.08f,-8,45);
+            }
+            float pitch = MenuOrbit ? 28 : Mathf.Clamp(Mathf.Lerp(11, 66, zoom)+pitchOffset, 5, 82);
+            float distance = MenuOrbit ? 30 : Mathf.Lerp(5.5f, 32, zoom);
             Quaternion rotation = Quaternion.Euler(pitch, yaw, 0);
             Vector3 destination = target.position + Vector3.up * 1.3f - rotation * Vector3.forward * distance;
             float blend = 1 - Mathf.Exp(-7 * Time.deltaTime);
@@ -1527,7 +1603,7 @@ namespace NextGenFarm
     {
         private IEnumerator Start()
         {
-            string[] args=Environment.GetCommandLineArgs();string path=null;float delay=5;bool quit=false,shop=false,verify=false;
+            string[] args=Environment.GetCommandLineArgs();string path=null;float delay=5;bool quit=false,shop=false,verify=false,menu=false,settings=false,flow=false;
             for(int i=0;i<args.Length;i++)
             {
                 if(args[i]=="-farmCapture"&&i+1<args.Length)path=args[++i];
@@ -1535,19 +1611,33 @@ namespace NextGenFarm
                 else if(args[i]=="-farmCaptureAndQuit")quit=true;
                 else if(args[i]=="-farmCaptureShop")shop=true;
                 else if(args[i]=="-farmVerifyPresentation")verify=true;
+                else if(args[i]=="-farmCaptureMenu")menu=true;
+                else if(args[i]=="-farmCaptureSettings")settings=true;
+                else if(args[i]=="-farmVerifyFlow")flow=true;
             }
             if(path==null)yield break;
             FarmInput.Suppressed=true;
+            var gameFlow=FindFirstObjectByType<FarmGameFlow>();
+            if(!menu&&!settings)gameFlow.Play();
             path=Path.GetFullPath(path);Directory.CreateDirectory(Path.GetDirectoryName(path));
             yield return new WaitForSecondsRealtime(Mathf.Max(2,delay));
+            if(flow)
+            {
+                bool valid=false;
+                try { FarmFlowChecks.Verify(gameFlow); valid=true; } catch(Exception ex){Debug.LogException(ex);}
+                if(!valid){Application.Quit(2);yield break;}
+            }
             if(verify)
             {
                 bool valid=false;
                 try { VerifyPresentation(); valid=true; }
                 catch(Exception ex){Debug.LogException(ex);}
                 if(!valid){Application.Quit(2);yield break;}
-                yield return null;
+                yield return new WaitForSecondsRealtime(.8f);
             }
+            if(menu)gameFlow.ShowMainMenu();
+            if(settings)gameFlow.OpenSettings();
+            if(menu||settings)yield return new WaitForSecondsRealtime(1);
             if(shop){FindFirstObjectByType<FarmHUD>().OpenShop(0);yield return new WaitForSecondsRealtime(1);}
             yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(path);
             float deadline=Time.realtimeSinceStartup+8;
@@ -1686,6 +1776,283 @@ namespace NextGenFarm
                 Destroy(profile);
             }
             if (particleMaterial != null) Destroy(particleMaterial);
+        }
+    }
+}
+```
+
+## Assets/Farm/Runtime/FarmFlowChecks.cs
+
+```csharp
+using System;
+using System.IO;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.Rendering.HighDefinition;
+
+namespace NextGenFarm
+{
+    // Invoked only by the explicit native QA flag; never mutates the user's normal save/settings.
+    public static class FarmFlowChecks
+    {
+        public static void Verify(FarmGameFlow flow)
+        {
+            if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("NEXTGEN_FARM_SAVE_DIR")))
+                throw new InvalidOperationException("Flow checks require an isolated save directory");
+            flow.ShowMainMenu(); Require(flow.Screen == FarmScreen.MainMenu && !FarmGameFlow.GameplayAllowed, "main menu blocks farming");
+            Require(Cursor.visible && Cursor.lockState == CursorLockMode.None, "main menu cursor");
+            Click(flow, "Cài đặt"); Require(flow.Screen == FarmScreen.Settings, "main settings callback");
+            var master = Slider(flow, "Master slider"); var music = Slider(flow, "Music slider"); var sfx = Slider(flow, "SFX slider");
+            master.value = .6f; music.value = .3f; sfx.value = .7f;
+            Require(Mathf.Approximately(flow.Audio.MusicSource.volume, .18f) && Mathf.Approximately(flow.Audio.SfxSource.volume, .42f), "independent audio buses");
+            var hd = Camera.main.GetComponent<HDAdditionalCameraData>();
+            for (int i = 0; i < 4; i++)
+            {
+                flow.Settings.SetQuality(i);
+                Require(flow.Settings.Data.quality == i && hd.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.Volumetrics) == (i >= 2), "HDRP quality preset " + i);
+            }
+            foreach (int cap in new[] { 30, 45, 60, -1 })
+            {
+                flow.Settings.SetFPS(cap); Require(Application.targetFrameRate == cap && QualitySettings.vSyncCount == 0, "FPS cap " + cap);
+            }
+            flow.Settings.SetQuality(2); flow.Settings.SetFPS(45);
+            Click(flow, "Lưu và quay lại"); Require(flow.Screen == FarmScreen.MainMenu, "settings returns to main");
+            var saved = JsonUtility.FromJson<FarmSettingsData>(File.ReadAllText(flow.Settings.StoragePath));
+            Require(saved.fps == 45 && saved.quality == 2 && Mathf.Approximately(saved.master, .6f), "settings persistence");
+            Click(flow, "Chơi"); Require(FarmGameFlow.GameplayAllowed && flow.Screen == FarmScreen.Playing, "play callback");
+            flow.TogglePointer(); Require(!FarmGameFlow.GameplayAllowed && Cursor.visible, "pointer releases controls");
+            flow.TogglePointer(); Require(flow.Screen == FarmScreen.Playing, "pointer resume");
+            var hud = UnityEngine.Object.FindFirstObjectByType<FarmHUD>(); hud.OpenShop(0);
+            Require(flow.Screen == FarmScreen.Pointer && hud.IsShopOpen, "catalog unlocks cursor");
+            flow.Escape(); Require(flow.Screen == FarmScreen.Playing && !hud.IsShopOpen, "escape closes catalog first");
+            flow.ShowPause(); Click(flow, "Cài đặt"); Click(flow, "Lưu và quay lại");
+            Require(flow.Screen == FarmScreen.Paused, "settings returns to pause");
+            flow.Escape(); Require(flow.Screen == FarmScreen.Playing, "escape resumes");
+            var invalid = new FarmSettingsData { fps = 1, quality = 50, master = float.NaN, music = -5, sfx = 5 }; invalid.Validate();
+            Require(invalid.fps == 60 && invalid.quality == 3 && invalid.master == .5f && invalid.music == 0 && invalid.sfx == 1, "invalid settings sanitized");
+            flow.Settings.SetFPS(60); flow.Settings.Save();
+            Debug.Log("FARM_FLOW_CHECKS_PASSED: menu callbacks, pointer/catalog/pause transitions, audio buses, four HDRP presets, FPS caps, settings persistence, invalid data");
+        }
+        private static Slider Slider(FarmGameFlow flow, string name)
+        {
+            foreach (var slider in flow.GetComponentsInChildren<Slider>()) if (slider.name == name) return slider;
+            throw new Exception("Missing slider: " + name);
+        }
+        private static void Click(FarmGameFlow flow, string caption)
+        {
+            foreach (var button in flow.GetComponentsInChildren<Button>())
+                if (button.GetComponentInChildren<Text>()?.text == caption) { button.onClick.Invoke(); return; }
+            throw new Exception("Missing button: " + caption);
+        }
+        private static void Require(bool condition, string message) { if (!condition) throw new Exception("Flow check failed: " + message); }
+    }
+}
+```
+
+## Assets/Farm/Runtime/FarmGameFlow.cs
+
+```csharp
+using System;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+
+namespace NextGenFarm
+{
+    public enum FarmScreen { MainMenu, Playing, Pointer, Paused, Settings }
+
+    // Owns cursor and screen transitions. No Time.timeScale changes: crop deadlines stay in UTC.
+    [DefaultExecutionOrder(-150)]
+    public sealed class FarmGameFlow : MonoBehaviour
+    {
+        public static FarmGameFlow Instance { get; private set; }
+        public static bool GameplayAllowed => Instance == null || Instance.Screen == FarmScreen.Playing;
+        public FarmScreen Screen { get; private set; }
+        public FarmSettings Settings { get; private set; }
+        public FarmAudio Audio { get; private set; }
+        public bool IsWorldVisible => Screen == FarmScreen.Playing || Screen == FarmScreen.Pointer;
+        private FarmBootstrap app;
+        private FarmHUD hud;
+        private FarmCamera cameraRig;
+        private RectTransform root, panel;
+        private Font font;
+        private FarmScreen settingsOrigin;
+        private float ignoreLookUntil;
+        private bool focused = true;
+        private readonly Color cream = new Color(1, .97f, .86f), ink = new Color(.15f, .28f, .22f);
+        public bool CanLook => GameplayAllowed && focused && UnityEngine.Cursor.lockState == CursorLockMode.Locked && Time.unscaledTime >= ignoreLookUntil;
+
+        public void Initialize(FarmBootstrap bootstrap, FarmHUD gameHud, FarmCamera camera)
+        {
+            Instance = this; app = bootstrap; hud = gameHud; cameraRig = camera;
+            Settings = gameObject.AddComponent<FarmSettings>(); Settings.Initialize(camera.GetComponent<Camera>());
+            Audio = gameObject.AddComponent<FarmAudio>(); Audio.Initialize(Settings, app.Grid);
+            font = Font.CreateDynamicFontFromOSFont(new[] { "Segoe UI", "Arial" }, 24);
+            if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var go = new GameObject("Farm Menus", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            go.transform.SetParent(transform, false); root = go.GetComponent<RectTransform>();
+            var canvas = go.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 100;
+            var scaler = go.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080); scaler.matchWidthOrHeight = .5f;
+            ShowMainMenu();
+        }
+        private void Update()
+        {
+            if (!focused || FarmInput.Suppressed) return;
+            bool escape = FarmInput.MenuPress(KeyCode.Escape);
+            bool leftAlt = FarmInput.MenuPress(KeyCode.LeftAlt), rightAlt = FarmInput.MenuPress(KeyCode.RightAlt), tab = FarmInput.MenuPress(KeyCode.Tab);
+            if (escape) Escape();
+            else if (leftAlt || rightAlt || tab) TogglePointer();
+        }
+        public void Escape()
+        {
+            if (Screen == FarmScreen.Settings) CloseSettings();
+            else if (Screen == FarmScreen.Paused) Play();
+            else if (Screen == FarmScreen.Playing || Screen == FarmScreen.Pointer)
+            {
+                if (hud.IsShopOpen) hud.CloseShop();
+                else ShowPause();
+            }
+        }
+        public void TogglePointer()
+        {
+            if (Screen == FarmScreen.Playing) SetState(FarmScreen.Pointer);
+            else if (Screen == FarmScreen.Pointer) { hud.CloseShop(); SetState(FarmScreen.Playing); }
+        }
+        public void CatalogOpened() { if (IsWorldVisible) SetState(FarmScreen.Pointer); }
+        public void CatalogClosed() { if (Screen == FarmScreen.Pointer) SetState(FarmScreen.Playing); }
+        public void Play() { Clear(); hud.CloseShop(); SetState(FarmScreen.Playing); }
+        public void ShowMainMenu()
+        {
+            if (app != null && app.Saves != null) app.Saves.Save();
+            hud.CloseShop(); SetState(FarmScreen.MainMenu); Clear();
+            panel = Box(root, "Main menu", new Vector2(440, 560), new Vector2(.23f, .5f), new Color(.08f, .19f, .15f, .94f));
+            TextAt(panel, "ĐỒNG NỘI", 48, new Vector2(0, 190), new Vector2(400, 70), cream);
+            TextAt(panel, "Một khoảng bình yên giữa thung lũng", 20, new Vector2(0, 130), new Vector2(400, 55), new Color(.77f, .85f, .64f));
+            MakeButton(panel, "Chơi", new Vector2(0, 35), Play);
+            MakeButton(panel, "Cài đặt", new Vector2(0, -55), OpenSettings);
+            MakeButton(panel, "Thoát", new Vector2(0, -145), ExitGame);
+            TextAt(panel, "Nông trại vẫn lớn lên khi bạn nghỉ ngơi", 16, new Vector2(0, -233), new Vector2(400, 44), cream);
+        }
+        public void ShowPause()
+        {
+            hud.CloseShop(); app.Saves.Save(); SetState(FarmScreen.Paused); Clear();
+            panel = Overlay("TẠM NGHỈ", new Vector2(500, 590));
+            MakeButton(panel, "Tiếp tục", new Vector2(0, 110), Play);
+            MakeButton(panel, "Cài đặt", new Vector2(0, 20), OpenSettings);
+            MakeButton(panel, "Về sảnh chính", new Vector2(0, -70), ShowMainMenu);
+            MakeButton(panel, "Thoát game", new Vector2(0, -160), ExitGame);
+            TextAt(panel, "Cây vẫn tăng trưởng theo thời gian thực", 17, new Vector2(0, -245), new Vector2(450, 40), ink);
+        }
+        public void OpenSettings()
+        {
+            if (Screen == FarmScreen.Settings) return;
+            settingsOrigin = Screen;
+            if (hud.IsShopOpen) { hud.CloseShop(); settingsOrigin = FarmScreen.Playing; }
+            SetState(FarmScreen.Settings); Clear();
+            panel = Overlay("CÀI ĐẶT", new Vector2(1040, 830));
+            TextAt(panel, "ÂM THANH", 23, new Vector2(-340, 295), new Vector2(280, 40), ink);
+            VolumeRow("Âm lượng tổng", "Master", 220, Settings.Data.master, v => Settings.SetVolumes(v, Settings.Data.music, Settings.Data.sfx));
+            VolumeRow("Nhạc nền", "Music", 140, Settings.Data.music, v => Settings.SetVolumes(Settings.Data.master, v, Settings.Data.sfx));
+            VolumeRow("Hiệu ứng", "SFX", 60, Settings.Data.sfx, v => Settings.SetVolumes(Settings.Data.master, Settings.Data.music, v));
+            TextAt(panel, "HÌNH ẢNH", 23, new Vector2(-340, -35), new Vector2(280, 40), ink);
+            ChoiceRow("Chất lượng", "Quality", -112, new[] { "Thấp", "Trung bình", "Cao", "Siêu cao" }, Settings.Data.quality, Settings.SetQuality);
+            int[] caps = { 30, 45, 60, -1 }; int index = Array.IndexOf(caps, Settings.Data.fps);
+            ChoiceRow("Giới hạn FPS", "FPS", -197, new[] { "30 FPS", "45 FPS", "60 FPS", "Không giới hạn" }, index, i => Settings.SetFPS(caps[i]));
+            TextAt(panel, "Thay đổi áp dụng ngay • Tắt VSync để dùng giới hạn FPS", 17, new Vector2(0, -275), new Vector2(950, 40), ink);
+            MakeButton(panel, "Lưu và quay lại", new Vector2(0, -350), CloseSettings);
+        }
+        public void CloseSettings()
+        {
+            bool saved = Settings.Save();
+            if (settingsOrigin == FarmScreen.MainMenu) ShowMainMenu();
+            else if (settingsOrigin == FarmScreen.Paused) ShowPause();
+            else { Play(); if (settingsOrigin == FarmScreen.Pointer) SetState(FarmScreen.Pointer); }
+            if (!saved) hud.ShowToast("Chưa lưu được cài đặt. Kiểm tra quyền ghi thư mục.");
+        }
+        private void SetState(FarmScreen state)
+        {
+            Screen = state; FarmInput.ClearGUIState();
+            if (hud != null) hud.SetVisible(IsWorldVisible);
+            if (hud != null) hud.SetPointerInteraction(state == FarmScreen.Pointer);
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.sendNavigationEvents = state != FarmScreen.Playing;
+                EventSystem.current.SetSelectedGameObject(null);
+            }
+            if (cameraRig != null) cameraRig.MenuOrbit = state == FarmScreen.MainMenu || (state == FarmScreen.Settings && settingsOrigin == FarmScreen.MainMenu);
+            RefreshCursor();
+        }
+        private void RefreshCursor()
+        {
+            bool locked = focused && Screen == FarmScreen.Playing;
+            UnityEngine.Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
+            UnityEngine.Cursor.visible = !locked;
+            ignoreLookUntil = Time.unscaledTime + .12f;
+        }
+        private void OnApplicationFocus(bool value)
+        {
+            focused = value;
+            if (!value && Screen == FarmScreen.Playing && app != null) SetState(FarmScreen.Pointer);
+            RefreshCursor();
+        }
+        private void ExitGame() { Settings.Save(); app.Saves.Save(); Application.Quit(); }
+        private void Clear()
+        {
+            foreach (Transform child in root) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
+        }
+        private RectTransform Box(Transform parent, string name, Vector2 size, Vector2 anchor, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image)); go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = anchor; rect.sizeDelta = size;
+            var image = go.GetComponent<Image>(); image.sprite = FarmUIArt.Rounded; image.type = Image.Type.Sliced; image.color = color;
+            return rect;
+        }
+        private RectTransform Overlay(string title, Vector2 size)
+        {
+            var shade = Box(root, "Menu backdrop", Vector2.zero, Vector2.zero, new Color(.02f, .08f, .06f, .55f));
+            shade.anchorMax = Vector2.one; shade.offsetMin = shade.offsetMax = Vector2.zero;
+            var card = Box(shade, title, size, new Vector2(.5f, .5f), cream);
+            TextAt(card, title, 34, new Vector2(0, size.y / 2 - 55), new Vector2(size.x - 70, 60), ink);
+            return card;
+        }
+        private Text TextAt(Transform parent, string value, int size, Vector2 position, Vector2 dimensions, Color color)
+        {
+            var go = new GameObject(value, typeof(RectTransform), typeof(Text)); go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f); rect.anchoredPosition = position; rect.sizeDelta = dimensions;
+            var label = go.GetComponent<Text>(); label.font = font; label.text = value; label.fontSize = size; label.color = color;
+            label.alignment = TextAnchor.MiddleCenter; label.raycastTarget = false; return label;
+        }
+        private Button MakeButton(Transform parent, string caption, Vector2 position, Action clicked, Vector2? size = null)
+        {
+            var rect = Box(parent, caption, size ?? new Vector2(350, 66), new Vector2(.5f, .5f), new Color(.82f, .88f, .63f)); rect.anchoredPosition = position;
+            var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = rect.GetComponent<Image>();
+            TextAt(rect, caption, 23, Vector2.zero, (size ?? new Vector2(350, 66)) - new Vector2(10, 4), ink);
+            button.onClick.AddListener(() => { Audio.Click(); clicked(); }); return button;
+        }
+        private void VolumeRow(string title, string id, float y, float value, Action<float> changed)
+        {
+            TextAt(panel, title, 22, new Vector2(-312, y), new Vector2(300, 50), ink);
+            var track = Box(panel, id + " slider", new Vector2(420, 32), new Vector2(.5f, .5f), new Color(.7f, .76f, .65f)); track.anchoredPosition = new Vector2(120, y);
+            var handle = Box(track, "Handle", new Vector2(30, 44), new Vector2(.5f, .5f), new Color(.22f, .44f, .31f));
+            var slider = track.gameObject.AddComponent<Slider>(); slider.handleRect = handle; slider.targetGraphic = handle.GetComponent<Image>();
+            slider.direction = Slider.Direction.LeftToRight; slider.minValue = 0; slider.maxValue = 1; slider.SetValueWithoutNotify(value);
+            var number = TextAt(panel, Mathf.RoundToInt(value * 100) + "%", 21, new Vector2(420, y), new Vector2(100, 45), ink);
+            slider.onValueChanged.AddListener(v => { changed(v); number.text = Mathf.RoundToInt(v * 100) + "%"; });
+        }
+        private void ChoiceRow(string title, string id, float y, string[] choices, int selected, Action<int> changed)
+        {
+            TextAt(panel, title, 22, new Vector2(-312, y), new Vector2(300, 50), ink);
+            var value = TextAt(panel, choices[selected], 24, new Vector2(135, y), new Vector2(380, 58), ink);
+            int current = selected;
+            MakeButton(panel, "‹", new Vector2(-75, y), () => { current = (current + choices.Length - 1) % choices.Length; changed(current); value.text = choices[current]; }, new Vector2(65, 58)).name = id + " Previous";
+            MakeButton(panel, "›", new Vector2(345, y), () => { current = (current + 1) % choices.Length; changed(current); value.text = choices[current]; }, new Vector2(65, 58)).name = id + " Next";
+        }
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+            UnityEngine.Cursor.lockState = CursorLockMode.None; UnityEngine.Cursor.visible = true;
+            if (font != null) Destroy(font);
         }
     }
 }
@@ -1879,7 +2246,7 @@ namespace NextGenFarm
                 Label(b.transform,keys[i],new Vector2(1,1),new Vector2(1,1),new Vector2(-6,-4),new Vector2(18,18),12,green,TextAnchor.MiddleCenter,true);
                 toolFaces.Add(b.GetComponent<Image>());
             }
-            Label(root,"WASD  Di chuyển     •     Cuộn chuột  Khoảng cách     •     Giữ chuột phải  Xoay góc nhìn",new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,5),new Vector2(850,20),14,Color.white,TextAnchor.MiddleCenter);
+            Label(root,"WASD  Di chuyển   •   Chuột  Xoay camera   •   Alt / Tab  Con trỏ   •   Esc  Menu",new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,5),new Vector2(950,20),14,Color.white,TextAnchor.MiddleCenter);
         }
         private void Tool(int index)
         {if(index<4){app.Driver.SelectedAction=(FarmAction)index;ShowToast(new[]{"Chọn đất trống rồi nhấn Space để cày","Chọn giống trong cửa hàng, nhấn Space để gieo","Tưới một lần mỗi vụ để giảm thời gian chờ","Cây chín luôn chờ bạn quay lại"}[index]);}else if(index==4)app.Driver.SetMounted(!app.Driver.Mounted);else if(index==5)app.Driver.ToggleAuto();else OpenShop(0);}
@@ -1913,7 +2280,8 @@ namespace NextGenFarm
             playerDot=Rect(r,"You",Vector2.zero,new Vector2(.5f,.5f),Vector2.zero,new Vector2(10,10));Image(playerDot,new Color(1,.9f,.5f));
         }
         public void ShowToast(string text){if(toast!=null){toast.text=text;toastUntil=Time.unscaledTime+4.5f;}}
-        public void SetVisible(bool visible) { if(canvas!=null)canvas.enabled=visible; }
+        public void SetVisible(bool visible) { if(root!=null)root.gameObject.SetActive(visible); }
+        public void SetPointerInteraction(bool enabled) { if(canvas!=null)canvas.GetComponent<GraphicRaycaster>().enabled=enabled; }
         private void OnAction(Vector2Int tile,FarmAction action,int count)
         {ShowToast(action==FarmAction.Harvest?"Thu hoạch thành công  ·  "+count+" ô":action==FarmAction.Water?"Đã tưới "+count+" ô  ·  Cây lớn nhanh hơn":action==FarmAction.Sow?"Đã gieo "+count+" ô "+CropName(app.Driver.SelectedCrop):"Đã cày "+count+" ô đất");}
         public static string CropName(string id)=>id=="corn"?"Ngô":id=="wheat"?"Lúa mì":id=="carrot"?"Cà rốt":id;
@@ -1957,6 +2325,7 @@ namespace NextGenFarm
         public void OpenShop(int page)
         {
             CloseShop();
+            FarmGameFlow.Instance?.CatalogOpened();
             modalBlocker=Rect(root,"Catalog backdrop",new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(4000,2400));
             Image(modalBlocker,new Color(.04f,.12f,.09f,.55f)).raycastTarget=true;
             modal=Panel(modalBlocker,"Catalog",new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(960,600),cream);
@@ -1989,7 +2358,8 @@ namespace NextGenFarm
                 Button(modal,"Thu sản phẩm",new Vector2(.5f,.5f),new Vector2(0,.5f),new Vector2(15,-60),new Vector2(250,55),()=>{int n=app.Animals.HarvestAll();ShowToast(n>0?"Đã thu sữa vào kho":"Sản phẩm chưa sẵn sàng");});
             }
         }
-        private void CloseShop(){if(modal!=null)Destroy(modal.gameObject);if(modalBlocker!=null)Destroy(modalBlocker.gameObject);modal=null;modalBlocker=null;}
+        public bool IsShopOpen => modalBlocker != null;
+        public void CloseShop(){bool wasOpen=IsShopOpen;if(modalBlocker!=null){modalBlocker.gameObject.SetActive(false);Destroy(modalBlocker.gameObject);}modal=null;modalBlocker=null;if(wasOpen)FarmGameFlow.Instance?.CatalogClosed();}
         private void OnDestroy(){if(app!=null&&app.Grid!=null)app.Grid.ActionApplied-=OnAction;if(mapTexture!=null)Destroy(mapTexture);if(font!=null)Destroy(font);if(bold!=null&&bold!=font)Destroy(bold);}
     }
 }
@@ -2010,17 +2380,18 @@ namespace NextGenFarm
     public static class FarmInput
     {
         public static bool Suppressed { get; set; }
-        private static bool Active => Application.isFocused && !Suppressed;
+        private static bool Available => Application.isFocused && !Suppressed;
+        private static bool Active => Available && FarmGameFlow.GameplayAllowed;
         public static Vector2 Look
         {
             get
             {
-                if(!Active)return Vector2.zero;
+                if(!Active || (FarmGameFlow.Instance != null && !FarmGameFlow.Instance.CanLook))return Vector2.zero;
 #if ENABLE_INPUT_SYSTEM
-                if(Mouse.current!=null&&Mouse.current.rightButton.isPressed)return Mouse.current.delta.ReadValue();
+                if(Mouse.current!=null)return Mouse.current.delta.ReadValue();
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-                if(Input.GetMouseButton(1))return new Vector2(Input.GetAxis("Mouse X"),Input.GetAxis("Mouse Y"))*12;
+                if (Cursor.lockState == CursorLockMode.Locked) return new Vector2(Input.GetAxis("Mouse X"),Input.GetAxis("Mouse Y"))*12;
 #endif
                 return Vector2.zero;
             }
@@ -2031,7 +2402,7 @@ namespace NextGenFarm
         public static void ClearGUIState() { guiPresses.Clear(); guiHeld.Clear(); }
         public static void CaptureGUIEvent(Event evt)
         {
-            if(!Active)return;
+            if(!Available)return;
             if (evt == null || (evt.type != EventType.KeyDown && evt.type != EventType.KeyUp)) return;
             KeyCode code = evt.keyCode;
             bool characterOnly = code == KeyCode.None;
@@ -2046,6 +2417,7 @@ namespace NextGenFarm
             code == KeyCode.UpArrow || code == KeyCode.DownArrow || code == KeyCode.LeftArrow || code == KeyCode.RightArrow ||
             code == KeyCode.T || code == KeyCode.R || code == KeyCode.F || code == KeyCode.G || code == KeyCode.B ||
             code == KeyCode.V || code == KeyCode.P || code == KeyCode.Space || code == KeyCode.F12 ||
+            code == KeyCode.Escape || code == KeyCode.Tab || code == KeyCode.LeftAlt || code == KeyCode.RightAlt ||
             code == KeyCode.Equals || code == KeyCode.Minus || (code >= KeyCode.Alpha1 && code <= KeyCode.Alpha4);
         private static bool Consume(KeyCode code, bool hardware)
         {
@@ -2055,6 +2427,28 @@ namespace NextGenFarm
             if (handledFrames.TryGetValue(code, out int frame) && frame >= Time.frameCount - 1) return false;
             handledFrames[code] = Time.frameCount;
             return true;
+        }
+        public static bool MenuPress(KeyCode code)
+        {
+            if (!Available) return false;
+            bool pressed = false;
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                switch (code)
+                {
+                    case KeyCode.Escape: pressed = keyboard.escapeKey.wasPressedThisFrame; break;
+                    case KeyCode.Tab: pressed = keyboard.tabKey.wasPressedThisFrame; break;
+                    case KeyCode.LeftAlt: pressed = keyboard.leftAltKey.wasPressedThisFrame; break;
+                    case KeyCode.RightAlt: pressed = keyboard.rightAltKey.wasPressedThisFrame; break;
+                }
+            }
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+            pressed |= Input.GetKeyDown(code);
+#endif
+            return Consume(code, pressed);
         }
         public static Vector2 Move
         {
@@ -2594,6 +2988,128 @@ namespace NextGenFarm
 }
 ```
 
+## Assets/Farm/Runtime/FarmSettings.cs
+
+```csharp
+using System;
+using System.IO;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
+
+namespace NextGenFarm
+{
+    [Serializable]
+    public sealed class FarmSettingsData
+    {
+        public float master = .8f, music = .45f, sfx = .8f;
+        public int quality = 2, fps = 60;
+        public void Validate()
+        {
+            master = Level(master); music = Level(music); sfx = Level(sfx);
+            quality = Mathf.Clamp(quality, 0, 3);
+            if (fps != 30 && fps != 45 && fps != 60 && fps != -1) fps = 60;
+        }
+        private static float Level(float value) => float.IsNaN(value) || float.IsInfinity(value) ? .5f : Mathf.Clamp01(value);
+    }
+
+    // Explicit HDRP camera/light overrides: built-in shadowDistance alone does not configure HDRP.
+    public sealed class FarmSettings : MonoBehaviour
+    {
+        public FarmSettingsData Data { get; private set; } = new FarmSettingsData();
+        public float DrawDistance { get; private set; } = 600;
+        public string StoragePath { get; private set; }
+        public event Action Changed;
+        private Camera view;
+        private HDAdditionalLightData[] lights;
+        private float targetDistance;
+        private VolumeProfile qualityProfile;
+        public void Initialize(Camera camera)
+        {
+            view = camera;
+            lights = FindObjectsByType<HDAdditionalLightData>(FindObjectsSortMode.None);
+            var volume = new GameObject("Farm quality overrides").AddComponent<Volume>();
+            volume.transform.SetParent(transform, false); volume.isGlobal = true; volume.priority = 30;
+            qualityProfile = ScriptableObject.CreateInstance<VolumeProfile>(); volume.sharedProfile = qualityProfile;
+            qualityProfile.Add<HDShadowSettings>(true); qualityProfile.Add<Bloom>(true); qualityProfile.Add<ScreenSpaceAmbientOcclusion>(true);
+            string directory = Environment.GetEnvironmentVariable("NEXTGEN_FARM_SAVE_DIR");
+            if (string.IsNullOrWhiteSpace(directory)) directory = Application.persistentDataPath;
+            StoragePath = Path.Combine(directory, "settings-v1.json");
+            try { if (File.Exists(StoragePath)) Data = JsonUtility.FromJson<FarmSettingsData>(File.ReadAllText(StoragePath)) ?? new FarmSettingsData(); }
+            catch (Exception ex) { Debug.LogWarning("Settings fallback: " + ex.Message); }
+            Apply(); DrawDistance = targetDistance; view.farClipPlane = DrawDistance;
+        }
+        public void SetVolumes(float master, float music, float sfx)
+        { Data.master = master; Data.music = music; Data.sfx = sfx; Data.Validate(); Changed?.Invoke(); }
+        public void SetQuality(int quality) { Data.quality = quality; Apply(); }
+        public void SetFPS(int fps) { Data.fps = fps; Apply(); }
+        public void Apply()
+        {
+            Data.Validate(); int q = Data.quality;
+            targetDistance = new[] { 180f, 320f, 600f, 1000f }[q];
+            qualityProfile.TryGet<HDShadowSettings>(out var shadows); shadows.maxShadowDistance.Override(new[] { 30f, 60f, 110f, 180f }[q]);
+            qualityProfile.TryGet<Bloom>(out var bloom); bloom.intensity.Override(q == 0 ? 0 : q == 1 ? .08f : .15f);
+            qualityProfile.TryGet<ScreenSpaceAmbientOcclusion>(out var ao); ao.intensity.Override(q < 2 ? 0 : .65f);
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = Data.fps;
+            QualitySettings.lodBias = new[] { .6f, 1f, 1.5f, 2f }[q];
+            QualitySettings.globalTextureMipmapLimit = q == 0 ? 1 : 0;
+            QualitySettings.anisotropicFiltering = q < 2 ? AnisotropicFiltering.Enable : AnisotropicFiltering.ForceEnable;
+            var hd = view.GetComponent<HDAdditionalCameraData>();
+            if (hd != null)
+            {
+                hd.customRenderingSettings = true;
+                // Keep exposure/tonemapping enabled at every level for a consistent HDRP image.
+                SetFrame(hd, FrameSettingsField.Postprocess, true);
+                SetFrame(hd, FrameSettingsField.Bloom, q >= 1);
+                SetFrame(hd, FrameSettingsField.SSAO, q >= 2);
+                SetFrame(hd, FrameSettingsField.Volumetrics, q >= 2);
+                hd.antialiasing = q == 0 ? HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing : HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing;
+            }
+            int resolution = new[] { 512, 1024, 2048, 4096 }[q];
+            foreach (var light in lights)
+            {
+                if (light == null) continue;
+                light.SetShadowResolutionOverride(true); light.SetShadowResolution(resolution);
+                light.SetShadowFadeDistance(new[] { 30f, 60f, 110f, 180f }[q]);
+            }
+            Changed?.Invoke();
+        }
+        private static void SetFrame(HDAdditionalCameraData hd, FrameSettingsField field, bool enabled)
+        {
+            hd.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)field] = true;
+            hd.renderingPathCustomFrameSettings.SetEnabled(field, enabled);
+        }
+        private void Update()
+        {
+            if (view == null) return;
+            DrawDistance = Mathf.Lerp(DrawDistance, targetDistance, 1 - Mathf.Exp(-5 * Time.unscaledDeltaTime));
+            view.farClipPlane = DrawDistance;
+        }
+        public bool Save()
+        {
+            try
+            {
+                Data.Validate(); Directory.CreateDirectory(Path.GetDirectoryName(StoragePath));
+                string temporary = StoragePath + ".tmp";
+                File.WriteAllText(temporary, JsonUtility.ToJson(Data, true));
+                if (File.Exists(StoragePath)) File.Replace(temporary, StoragePath, null);
+                else File.Move(temporary, StoragePath);
+                return true;
+            }
+            catch (Exception ex) { Debug.LogWarning("Cannot save settings: " + ex.Message); return false; }
+        }
+        private void OnApplicationQuit() { if (StoragePath != null) Save(); }
+        private void OnDestroy()
+        {
+            if (qualityProfile == null) return;
+            foreach (var component in qualityProfile.components) Destroy(component);
+            Destroy(qualityProfile);
+        }
+    }
+}
+```
+
 ## Assets/Farm/Runtime/FarmVisualLibrary.cs
 
 ```csharp
@@ -2780,7 +3296,7 @@ namespace NextGenFarm
         }
         private void Update()
         {
-            if (grid == null) return;
+            if (grid == null || !FarmGameFlow.GameplayAllowed) return;
             if (FarmInput.Press('1')) SelectedAction = FarmAction.Plow;
             if (FarmInput.Press('2')) SelectedAction = FarmAction.Sow;
             if (FarmInput.Press('3')) SelectedAction = FarmAction.Water;
@@ -2791,7 +3307,7 @@ namespace NextGenFarm
             if (input.sqrMagnitude > 0.01f)
             {
                 StopAuto();
-                // Camera faces north in demo, so WASD maps directly to farm coordinates.
+                // Project camera forward onto the ground; movement follows the free-look view.
                 Vector3 forward=Camera.main!=null?Camera.main.transform.forward:Vector3.forward;forward.y=0;forward.Normalize();
                 Vector3 move = forward*input.y + Vector3.Cross(Vector3.up,forward)*input.x;
                 Vector3 desired = transform.position + move * ((Mounted ? 7 : 4) * Time.deltaTime);

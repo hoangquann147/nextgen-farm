@@ -108,6 +108,7 @@ namespace NextGenFarm
             environment.Initialize(clock, camera, root.transform, visuals != null ? visuals.precipitationMaterial : null);
             saves.Initialize(grid, animals);
             hud=gameObject.AddComponent<FarmHUD>();hud.Initialize(this);
+            gameObject.AddComponent<FarmGameFlow>().Initialize(this,hud,follow);
             gameObject.AddComponent<FarmActionFeedback>().Initialize(grid);
             gameObject.AddComponent<FarmCaptureRunner>();
         }

@@ -1,0 +1,2 @@
+FARM_FLOW_CHECKS_PASSED: menu callbacks, pointer/catalog/pause transitions, audio buses, four HDRP presets, FPS caps, settings persistence, invalid data
+FARM_PRESENTATION_INTERACTION_PASSED: context button, seed catalog, watering, one-time reward, save persistence

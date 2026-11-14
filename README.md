@@ -4,7 +4,7 @@ Project nông trại 3D cho Windows, dùng **Unity 6000.0.62f1 / HDRP 17.0.4**. 
 
 ## Mở và chơi
 
-**Tải bản Windows chơi ngay:** mở [GitHub Releases](https://github.com/hoangquann147/nextgen-farm/releases/latest), tải `NextGenFarm-Windows-x64.zip`, giải nén toàn bộ, rồi nhấp đúp `CHOI-GAME.cmd`. Không cần cài Unity. Đây là bản prototype để thử nghiệm, chưa có co-op.
+**Tải bản Windows chơi ngay:** mở [GitHub Releases](https://github.com/hoangquann147/nextgen-farm/releases), tải `NextGenFarm-Windows-x64.zip` của bản mới nhất, giải nén toàn bộ, rồi nhấp đúp `CHOI-GAME.cmd`. Không cần cài Unity. Đây là bản prototype để thử nghiệm, chưa có co-op.
 
 Trong source project, `XEM-DEMO.cmd` mở nông trại demo có sẵn cây và chuồng; lần đầu chạy sẽ điều chỉnh mốc thời gian demo về hiện tại. Demo lưu riêng trong `DemoFarm/Save-v2`.
 
@@ -21,13 +21,15 @@ Các launcher tìm Unity ở `F:/UnityFarmTools/6000.0.62f1` hoặc đường d�
 | Phím | Chức năng |
 | --- | --- |
 | WASD / mũi tên | Đi lại |
+| Di chuyển chuột | Xoay camera tự do, không cần giữ chuột phải |
+| Alt / Tab | Chuyển giữa điều khiển nhân vật và con trỏ UI |
+| Esc | Đóng cửa hàng trước; mở/đóng menu tạm nghỉ; quay lại từ cài đặt |
 | Cuộn chuột | Zoom camera |
 | T | Lên/xuống máy cày |
 | 1 / 2 / 3 / 4 | Cày / gieo / tưới / thu hoạch |
 | Space | Dùng công cụ phía trước; 1×1 khi đi bộ, 3×3 trên máy cày |
 | R | Chạy/dừng Auto-Tractor; WASD cũng dừng tự lái |
 | B | Mở cửa hàng hạt giống, kho và vật nuôi |
-| Giữ chuột phải và kéo | Xoay camera |
 | F12 | Chụp ảnh gameplay |
 | F / G | Cho ăn / thu sản phẩm chuồng |
 | V | Bán nông sản trong kho |
@@ -39,6 +41,19 @@ Cà rốt chín sau 120 giây; tưới giúp giảm 30 giây một lần/vụ. M
 Save nằm trong `%USERPROFILE%/AppData/LocalLow/NextGenFarm/NextGen Farm/nextgen-farm-v1.json`, kèm backup `.bak`. Nếu file chính hỏng, game thử backup. Nếu cả hai không hợp lệ, game hiện thông báo thay vì ghi đè dữ liệu cũ. Kiểm thử tự động dùng thư mục save riêng qua biến `NEXTGEN_FARM_SAVE_DIR`.
 
 ## Kiểm tra
+
+Game khởi động ở sảnh chính với nền trang trại quay chậm. Cài đặt mở được từ sảnh chính hoặc menu Esc, có ba thanh âm lượng Master/Music/SFX, bốn mức đồ họa và giới hạn 30/45/60/không giới hạn. Cài đặt áp dụng ngay và lưu khi bấm “Lưu và quay lại” hoặc thoát game. Nhạc nền và hiệu ứng hiện dùng âm thanh procedural.
+
+| Preset | Khoảng nhìn | Bóng HDRP | Hậu kỳ |
+| --- | --- | --- | --- |
+| Thấp | 180 m | 512 px, 30 m | Exposure/tonemapping, FXAA |
+| Trung bình | 320 m | 1024 px, 60 m | Bloom nhẹ, TAA |
+| Cao | 600 m | 2048 px, 110 m | Bloom, SSAO, volumetric fog, TAA |
+| Siêu cao | 1000 m | 4096 px, 180 m | Bloom, SSAO, volumetric fog, TAA |
+
+Khoảng nhìn chuyển dần; đổi preset không tải lại scene. FPS cap dùng bộ giới hạn của Unity với VSync tắt; hiệu năng thực tế phụ thuộc phần cứng. Cài đặt lưu trong `settings-v1.json` cạnh save nông trại. Khi mất focus, chuột được mở khóa; bấm Alt/Tab để trở lại điều khiển sau khi quay lại cửa sổ.
+
+Mã đầy đủ nằm ở `Assets/Farm`; [CODE_FULL.md](CODE_FULL.md) chứa toàn bộ C# để đọc/copy. `FarmBootstrap` tự khởi tạo `FarmGameFlow`, `FarmSettings` và `FarmAudio`, không cần gắn từng component bằng tay.
 
 ```powershell
 # Kiểm thử lõi (compiler Roslyn cục bộ có ở máy thực hiện)
@@ -60,6 +75,10 @@ Hiện có lưới, cây trồng, máy cày/auto, chuồng bò, kho/tiền/bán 
 Xem `ARCHITECTURE.vi.md` cho kiến trúc, `README.vi.md` cho mô tả luật chi tiết và `CODE_FULL.md` cho bản mã C# ghép để đọc.
 
 ## Hình ảnh thực tế
+
+![Sảnh chính](production/qa/evidence/menu-flow/main-menu.png)
+
+![Cài đặt](production/qa/evidence/menu-flow/settings.png)
 
 ![Gameplay Unity](production/qa/evidence/presentation-v2/gameplay-latest.png)
 

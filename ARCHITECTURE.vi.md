@@ -72,3 +72,13 @@ Thiết kế ánh sáng hiện có global HDRP Volume với fixed exposure, Grad
 Lưới lớn cần streaming chunk, lưu delta/journal hoặc binary blob có version và snapshot bất biến serialize ở worker. Không được đưa `JsonUtility`/API Unity hoặc state đang mutate tùy tiện sang background thread. BFS demo có thể thay bằng A* và route cache với revision invalidation. Instancing hiện chia chunk cho culling nhóm, chưa có per-instance GPU culling hoặc LOD. Đánh giá bằng Unity Profiler/Frame Debugger trên máy mục tiêu trước khi cam kết FPS hoặc số ô.
 
 Tiêu chí release phải bao gồm Unity build thật, lifecycle save trên platform đích, migration save, hai client cạnh tranh cùng harvest, chống mất/thừa tiền, hình ảnh ngày/đêm và từng mùa, build shader variants và playtest điều khiển. Các mục này chưa hoàn thành chỉ từ test lõi .NET.
+# Luồng điều khiển và menu bổ sung
+
+`FarmBootstrap` tạo `FarmGameFlow` sau HUD/camera. Flow quản lý các trạng thái MainMenu, Playing, Pointer, Paused, Settings và nguồn mở Settings để quay lại đúng màn hình. Chỉ Playing nhận input nhân vật; Alt/Tab chuyển Pointer, Esc đóng catalog trước rồi mới mở menu. Cursor mở khóa khi mất focus; có khoảng chờ ngắn khi khóa lại để bỏ delta chuột do warp.
+
+`FarmSettings` tải/kiểm tra JSON, áp dụng FPS/vSync, camera frame settings HDRP, shadow resolution/distance và volume SSAO/Bloom. Khoảng nhìn nội suy khi đổi preset. File cài đặt ghi qua tệp tạm và thay thế nguyên tử. `FarmAudio` có hai AudioSource độc lập; volume thực bằng Master nhân Music hoặc SFX. Các clip hiện được tổng hợp tại runtime.
+
+Không dùng Time.timeScale để đóng băng tăng trưởng. Driver dừng thao tác/auto khi ở menu; SeasonTimeManager và các deadline UTC tiếp tục chạy. HUD bị tắt cả GameObject khi ẩn; raycaster chỉ mở ở chế độ con trỏ. EventSystem không xử lý Submit/Navigation khi điều khiển nhân vật, tránh Space kích hoạt nhầm nút đã chọn.
+
+Native QA flag `-farmVerifyFlow` kiểm tra callback UI, chuyển trạng thái, bốn mức HDRP, FPS, bus âm thanh và file cài đặt trong save riêng. Không thay cho human playtest chuột/bàn phím hoặc đo hiệu năng.
+

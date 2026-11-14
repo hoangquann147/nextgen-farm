@@ -72,6 +72,7 @@ namespace NextGenFarm.Editor
         }
         private static void ExerciseGame()
         {
+            UnityEngine.Object.FindFirstObjectByType<FarmGameFlow>()?.Play();
             var grid = UnityEngine.Object.FindFirstObjectByType<FarmGridManager>();
             var animals = UnityEngine.Object.FindFirstObjectByType<AnimalPenSystem>();
             var driver = UnityEngine.Object.FindFirstObjectByType<TractorController>();
