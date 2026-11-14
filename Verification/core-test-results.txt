@@ -1,0 +1,67 @@
+PASS season starts at spring
+PASS 17 minute boundary before
+PASS 17 minute boundary exact
+PASS four season wrap
+PASS new season remaining
+PASS out of bounds rejected
+PASS cannot sow grass
+PASS plow
+PASS sow
+PASS seed price charged once
+PASS duplicate sow rejected
+PASS water
+PASS watering reduces absolute deadline
+PASS cannot stack watering bonus after drying
+PASS wet soil expires while offline
+PASS early harvest rejected
+PASS long offline crop never dies
+PASS harvest product yield
+PASS harvest cannot duplicate
+PASS town sale inventory to coins
+PASS sale cannot duplicate
+PASS prewatered soil applies one crop bonus
+PASS 3x3 clips at farm edge
+PASS tractor affects nine cells
+PASS partial 3x3 sow respects budget deterministically
+PASS season restriction
+PASS unknown content rejected
+PASS nonfinite command rejected
+PASS place pen
+PASS overlapping pen rejected
+PASS reserved pen blocks farming
+PASS reserved pen blocks terraforming
+PASS feed cost per animal
+PASS double feed rejected
+PASS animal harvest deadline enforced
+PASS animals progress offline without dying
+PASS animal harvest cannot duplicate
+PASS animal yield
+PASS new feed cycle after harvest
+PASS save restores animal offline deadline
+PASS save restores reservation and money
+PASS restore deep copies inventory
+PASS restore deep copies tiles
+PASS future save rejected
+PASS nonfinite timestamp rejected
+PASS duplicate pen rejected
+PASS duplicate inventory rejected
+PASS crop deadline and water bonus survive save
+PASS offline restored crop harvestable
+PASS road blocks farming
+PASS road remains walkable
+PASS road cannot be terraformed under path
+PASS pen cannot overlap road
+PASS watering quest grants actual diamonds
+PASS watering reward cannot be claimed twice
+PASS harvesting quest grants medal
+PASS path and claimed quest survive restore
+PASS auto routes around obstacles
+PASS auto route reaches goal through adjacent cells
+PASS unreachable rows skipped
+PASS tractor cannot climb steep step
+PASS 3x3 serpentine covers all cells for 289 rectangular map sizes
+PASS JSON file roundtrip
+PASS atomic replacement creates backup
+PASS corrupt primary recovers valid backup
+PASS two corrupt saves return no partial world
+ALL 66 ASSERTIONS PASSED

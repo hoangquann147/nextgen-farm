@@ -1,0 +1,102 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdf6103707d64e84f9e3cacd328e1adc, type: 3}
+  m_Name: DemoVisuals
+  m_EditorClassIdentifier: 
+  groundMesh: {fileID: 4300000, guid: 90f50366310391649b408a3bd7b735ff, type: 2}
+  grass: {fileID: 2100000, guid: eff02f5f3c1a8374787e210f7b38685b, type: 2}
+  drySoil: {fileID: 2100000, guid: 45bcf5834a60d9a4ca62a7ac305195a2, type: 2}
+  wetSoil: {fileID: 2100000, guid: 3604283e1db5bac46974d7df860f2385, type: 2}
+  precipitationMaterial: {fileID: 2100000, guid: 539f31a30e744bc43ae6f0075132486a, type: 2}
+  demoPalette:
+  - {fileID: 2100000, guid: 3a924534acdf7e242a1b6dedad32a004, type: 2}
+  - {fileID: 2100000, guid: 518f76dae54d7b247843e9587e32b690, type: 2}
+  - {fileID: 2100000, guid: 02d3627f56373d945b39aae401d26f68, type: 2}
+  - {fileID: 2100000, guid: 22fbe0c0f5ddaec4c849e7f1043f0549, type: 2}
+  - {fileID: 2100000, guid: b3345ab352b08d741a4a44b67ccbf620, type: 2}
+  - {fileID: 2100000, guid: 00da76acc964074419cbb13b29df32b1, type: 2}
+  - {fileID: 2100000, guid: f0f188d5ae5de8b4c9f45d48e3f35514, type: 2}
+  - {fileID: 2100000, guid: d7cebc2304ed9d248a4eae141e168d67, type: 2}
+  - {fileID: 2100000, guid: b8f9d916af36cba4b8977449eacd536b, type: 2}
+  - {fileID: 2100000, guid: c92127aba3662d0459fb6b128eb06e88, type: 2}
+  artMaterials:
+  - {fileID: 2100000, guid: 52c386432e6cf2d42925b5baa46f3949, type: 2}
+  - {fileID: 2100000, guid: 908541e23a18be14b904f7e605d2ff1a, type: 2}
+  - {fileID: 2100000, guid: 4c47465ba4a64564bb1ced5b0a848a76, type: 2}
+  - {fileID: 2100000, guid: b654ef39ca600d746bc7d97b5070467b, type: 2}
+  - {fileID: 2100000, guid: a27018e143f8d844d8235e062cc34998, type: 2}
+  - {fileID: 2100000, guid: 9cd0b3d7cf9037e478bb3c5b5e03a596, type: 2}
+  - {fileID: 2100000, guid: 51fa54ac2fe9e544da88f9d3476f42fb, type: 2}
+  - {fileID: 2100000, guid: 076bcdec1720d0743b716bb9b53977c7, type: 2}
+  - {fileID: 2100000, guid: 6b9810a4ceeb4554abbee92adcd845a8, type: 2}
+  - {fileID: 2100000, guid: b2ca852e736632341a722220e5439efa, type: 2}
+  - {fileID: 2100000, guid: 229d5b3de89a843498fc4780c0520197, type: 2}
+  - {fileID: 2100000, guid: 47deab3d6b34d8e4d95358426ee0067b, type: 2}
+  - {fileID: 2100000, guid: c8b047501167fd84a9f5ab224d2c53bd, type: 2}
+  - {fileID: 2100000, guid: 8f789cfd506fa614d814e201b4205e97, type: 2}
+  - {fileID: 2100000, guid: be61cc6a962d77e4b8f8cb7137e715d8, type: 2}
+  - {fileID: 2100000, guid: a2ad62a5c5c4f34438a5cdd5a9b87c09, type: 2}
+  - {fileID: 2100000, guid: d1ab9a242634bb744871a01f4e3fa997, type: 2}
+  - {fileID: 2100000, guid: 258b97f4ddbf88a49bf0920de6db92a6, type: 2}
+  - {fileID: 2100000, guid: 6e913f8304b6d5444832f5c9b5bac5de, type: 2}
+  - {fileID: 2100000, guid: c341a91f754b7794d9e813542de64821, type: 2}
+  - {fileID: 2100000, guid: 0591ff765246e684c8e172e947e52519, type: 2}
+  - {fileID: 2100000, guid: 2fe27bd6326e4d44db0e046f602a2844, type: 2}
+  detailGrassMesh: {fileID: 4300000, guid: 225d6c10a7ebcd646bb91573f8a89b35, type: 2}
+  cliffMaterial: {fileID: 2100000, guid: 258b97f4ddbf88a49bf0920de6db92a6, type: 2}
+  pathMaterial: {fileID: 2100000, guid: 51fa54ac2fe9e544da88f9d3476f42fb, type: 2}
+  crops:
+  - cropId: carrot
+    stages:
+    - {fileID: 4300000, guid: 2f2364512300ec6448b6812f4a581ee6, type: 2}
+    - {fileID: 4300000, guid: e9d84187dddbaca47a2ef75ac2d33aab, type: 2}
+    - {fileID: 4300000, guid: 0d365682727a49e42b9c907746881d1e, type: 2}
+    materials:
+    - {fileID: 2100000, guid: 22fbe0c0f5ddaec4c849e7f1043f0549, type: 2}
+    - {fileID: 2100000, guid: b3345ab352b08d741a4a44b67ccbf620, type: 2}
+    - {fileID: 2100000, guid: b3345ab352b08d741a4a44b67ccbf620, type: 2}
+    scale: {x: 1, y: 1, z: 1}
+    accentMaterials:
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+  - cropId: wheat
+    stages:
+    - {fileID: 4300000, guid: 927392bd6b2286a44b7ecaec6539935a, type: 2}
+    - {fileID: 4300000, guid: 464e1c4712c5cf34b973d43c75233c01, type: 2}
+    - {fileID: 4300000, guid: 69a870b39d5fe7a499a304c860d6c4bd, type: 2}
+    materials:
+    - {fileID: 2100000, guid: 22fbe0c0f5ddaec4c849e7f1043f0549, type: 2}
+    - {fileID: 2100000, guid: b3345ab352b08d741a4a44b67ccbf620, type: 2}
+    - {fileID: 2100000, guid: 00da76acc964074419cbb13b29df32b1, type: 2}
+    scale: {x: 1, y: 1, z: 1}
+    accentMaterials:
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+  - cropId: corn
+    stages:
+    - {fileID: 4300000, guid: ef8254d25911a9142b8c0931facf1092, type: 2}
+    - {fileID: 4300000, guid: 50b97d4e4b844e845a3c58ce84d6a408, type: 2}
+    - {fileID: 4300000, guid: aaf588716be42ca439c7b3151f6aa64b, type: 2}
+    materials:
+    - {fileID: 2100000, guid: 22fbe0c0f5ddaec4c849e7f1043f0549, type: 2}
+    - {fileID: 2100000, guid: b3345ab352b08d741a4a44b67ccbf620, type: 2}
+    - {fileID: 2100000, guid: b3345ab352b08d741a4a44b67ccbf620, type: 2}
+    scale: {x: 1, y: 1, z: 1}
+    accentMaterials:
+    - {fileID: 2100000, guid: a2ad62a5c5c4f34438a5cdd5a9b87c09, type: 2}
+    - {fileID: 2100000, guid: a2ad62a5c5c4f34438a5cdd5a9b87c09, type: 2}
+    - {fileID: 2100000, guid: a2ad62a5c5c4f34438a5cdd5a9b87c09, type: 2}
+  farmerPrefab: {fileID: 0}
+  tractorPrefab: {fileID: 0}
+  cowPrefab: {fileID: 0}

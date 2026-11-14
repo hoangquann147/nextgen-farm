@@ -1,0 +1,6 @@
+FARM_PROJECT_READY: Assets/FarmGenerated/FarmDemo.unity
+FARM_UNITY_CHECKS_PASSED: Unity JSON, offline progression and backup recovery
+FARM_PROJECT_CHECKS_PASSED
+FARM_PROJECT_READY: Assets/FarmGenerated/FarmDemo.unity
+FARM_RUNTIME_ACTIONS_PASSED
+FARM_PLAYMODE_CHECKS_PASSED
